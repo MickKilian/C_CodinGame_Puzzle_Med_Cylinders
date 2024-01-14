@@ -13,6 +13,12 @@ using namespace std;
  * the standard input according to the problem statement.
  **/
 
+typedef struct s_cylinder
+{
+    double  position;
+    int     radius;
+}   t_cylinder;
+
 double  distance(double r1, double r2) {
     if (!(r1 * r2))
         return (max(r1, r2));
@@ -98,57 +104,49 @@ void    printVectorDouble(const vector<double> vec) {
     cerr << endl;
 }
 
-void  examine_caves_in_sequence(vector<int> &sequence, int nb_cylinders, bool reverse_order) {
-    double  sum_distance = 0;
-    for (int i = 0; i < (int)sequence.size() - 1; i++) {
-        for (int j = i; j < min(i + 1 + nb_cylinders, (int)sequence.size() - 1); j++) {
-            sum_distance += distance(sequence[j], sequence[j + 1]);
-            if (sum_distance < distance(sequence[i], sequence[j + 1])) {
-                for (int k = i; k < j; k++)
-                    sequence.erase(sequence.begin() + i + 1);
-                break;
-            }
-        }
-        sum_distance = 0;
+void    compute_positions(vector<t_cylinder> &positions, int n = 1) {
+    double most_right_position = 0;
+    double calc_position = 0;
+
+    if (n == (int)positions.size()) {
+        return ;
     }
-    if (nb_cylinders > 1)
-        examine_caves_in_sequence(sequence, nb_cylinders - 1, false);
-    reverse(sequence.begin(), sequence.end());
-    if (!reverse_order)
-        examine_caves_in_sequence(sequence, nb_cylinders, true);
-}
-
-
-void  examine_sequence_front(vector<int> &sequence, bool reverse_order) {
-    double  sum_distance = sequence[0];
-    for (int i = 0; i < (int)sequence.size() - 1; i++) {
-        sum_distance += distance(sequence[i], sequence[i + 1]);
-        if (sum_distance < sequence[i + 1]) {
-            for (int j = 0; j < i + 1; j++)
-                sequence.erase(sequence.begin());
-            sum_distance = sequence[0];
-            i = - 1;
+    //cerr << "       calculating position : " << n << " radius : " << positions[n].radius << endl;
+    for (int i = 0; i < n; i++) {
+        calc_position = positions[i].position + distance(positions[i].radius, positions[n].radius);
+        //cerr << "       : " << i << " (" << positions[i].position << " + " << distance(positions[i].radius, positions[n].radius) << " = " << calc_position << ")" << endl;
+        if (most_right_position == 0 || calc_position > most_right_position) {
+            //cerr << "       *** updating" << endl;
+            most_right_position = calc_position;
         }
     }
-    reverse(sequence.begin(), sequence.end());
-    if (!reverse_order)
-        examine_sequence_front(sequence, true);
+    //cerr << "       *** final : " << most_right_position << endl;
+    positions[n].position = most_right_position;
+    compute_positions(positions, n + 1);
 }
 
 double  compute_distance(const vector<int> &sequence) {
-    double total_distance = 0;
-    vector<int> new_sequence(sequence);
-    int size;
+    int     size = (int)sequence.size();
+    vector<t_cylinder>    positions; 
+    t_cylinder cyl;
 
-    examine_caves_in_sequence(new_sequence, 1, false);
-    examine_caves_in_sequence(new_sequence, 2, false);
-    examine_caves_in_sequence(new_sequence, 3, false);
-    examine_sequence_front(new_sequence, false);
-    size = (int)new_sequence.size();
-    for (int i = 1; i < size; i++)
-        total_distance += distance(new_sequence[i - 1], new_sequence[i]);
-    total_distance += new_sequence[0] + new_sequence[size - 1];
-    return (total_distance);
+    // add left wall
+    cyl.position = 0.0;
+    cyl.radius = 0;
+    positions.push_back(cyl);
+    for (int i = 0; i < size; i++) {
+        cyl.position = 0.0;
+        cyl.radius = sequence[i];
+        positions.push_back(cyl);
+    }
+    // add right wall
+    cyl.position = 0.0;
+    cyl.radius = 0;
+    positions.push_back(cyl);
+
+    compute_positions(positions);
+    //cerr << positions[size + 2].position << endl;
+    return(positions[size + 1].position);
 }
 
 void order_sequence(vector<int> &sequence, const vector<int> &order) {
@@ -175,6 +173,7 @@ double min_distance(vector<int> *original_sequence) {
     int position = -1;
     double min_dist = 0;
     double cur_dist = 0;
+    int count = 0;
 
     //cerr << "size sequence : " << size << endl;
     while (position < size - 1) {
@@ -182,8 +181,9 @@ double min_distance(vector<int> *original_sequence) {
         order[position] = position;
     }
     order_sequence(sequence, order);
+    //printVector(sequence);
     min_dist = compute_distance(sequence);
-    while (!next_order(*original_sequence, order)) {
+    while (count++ < factorial(size) / 1 && !next_order(*original_sequence, order)) {
         sequence = *original_sequence;
         order_sequence(sequence, order);
         cur_dist = compute_distance(sequence);
@@ -195,92 +195,7 @@ double min_distance(vector<int> *original_sequence) {
 }
 
 int main()
-{
-    //ex: Example
-    //int test[8] = { 2, 1, 2 };
-    //res = 9.657;
-    //int test[8] = { 3, 3, 3, 3 };
-    //res = 24.000;
-    //int test[8] = { 900, 970, 567, 965 };
-    //res = 6696.314;
-    //int test[8] = { 3, 7, 380, 150, 93, 542, 135, 10 };
-    //res = 2163.508
-    //int test[8] = { 13, 8, 2, 1, 3, 1, 5, 2 }
-    //res = 53.811
-
-    //ex: Caves to fill in
-    //9
-    //1 500
-    //1000.000
-    //2 5 500
-    //1000.000
-    //3 5 10 15
-    //56.463
-    //4 20 1 2 3
-    //40.000
-    //5 2 3 2 3 3
-    //25.596
-    //6 121 6 3 12 28 17
-    //265.413
-    //7 60 70 80 10 30 40 300
-    //*886.430
-    //8 4137 183 51 96 109 99 183 10
-    //*8274.000
-    //int test[9] = { 3, 4, 3, 3, 200, 2, 400, 4, 11 }
-    //*800.000
-
-    //ex: Harsh
-    //10
-    //1 687
-    //1374.000
-    //2 580 431
-    //2010.960
-    //3 326 14 549
-    //1721.106
-    //4 518 47 784 308
-    //3083.334
-    //5 114 473 562 318 573
-    //3775.436
-    //6 985 305 540 647 367 866
-    //6855.840
-    //6 135 13 57 943 900 9
-    //3685.498
-    //7 914 398 108 36 688 846 231
-    //5589.961
-    //8 739 211 458 965 253 492 587 174
-    //6719.488
-    //9 279 496 796 644 602 765 723 715 85
-
-    //ex: Optimize your code
-    //10
-    //5 677 976 287 977 213
-    //5442.404
-    //int test[9] = { 1, 2, 3, 4, 5, 6, 7, 8, 9 }
-    //*80.103
-    //8 287 326 905 539 993 159 665 152
-    //4 180 574 839 223
-    //5 481 947 358 911 426
-    //9 442 721 165 672 157 346 696 767 269
-    //5 377 250 727 905 452
-    //7 432 647 785 609 875 339 76
-
-    
-//    vector<int> vec_test;
-//    int test[9] = { 1, 2, 3, 4, 5, 6, 7, 8, 9 };
-    //vec_test.push_back(0);
-//    for (int i = 0; i < 9; i++) {
-//       vec_test.push_back(test[i]);
-//    }
-    //vec_test.push_back(0);
-//    sort(vec_test.begin(), vec_test.end());
-    //printVector(vec_test);
-//    cout << setprecision(3) << fixed << min_distance(vec_test) << endl;
-
-    //examine_sequence(vec_test);
-    //vector<double> distances = compute_sequence_distances(vec_test);
-    //printVectorDouble(distances);
-    //cerr << "distance = " << add_distances(distances) << endl;
-//    return 0;
+{ 
     int n;
     struct timeval start;
     struct timeval tp;
@@ -289,7 +204,6 @@ int main()
     string line;
 
     cin >> n; cin.ignore();
-//    cerr << n << endl;
     for (int i = 0; i < n; i++) {
         getline(cin, line);
         cerr << line << endl;
@@ -306,12 +220,9 @@ int main()
         cout << setprecision(3) << fixed << distance << endl;
         gettimeofday(&start, NULL);
         gettimeofday(&tp, NULL);
-        cerr << "step[" << i << "] : " << tp.tv_sec * 1000 + tp.tv_usec / 1000 - start.tv_sec * 1000 + start.tv_usec / 1000 << " ms" << endl;
+        //cerr << "step[" << i << "] : " << tp.tv_sec * 1000 + tp.tv_usec / 1000 - start.tv_sec * 1000 + start.tv_usec / 1000 << " ms" << endl;
         numbers.clear();
     }
-    //cout << 0.000 << endl;
-
-
     // Write an answer using cout. DON'T FORGET THE "<< endl"
     // To debug: cerr << "Debug messages..." << endl;
 
